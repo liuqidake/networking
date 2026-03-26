@@ -79,7 +79,6 @@ const MOCK_SUBSCRIPTIONS = [
   { id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890", name: "Visual Studio Enterprise" },
   { id: "f1e2d3c4-b5a6-7890-abcd-ef1234567890", name: "Pay-As-You-Go" },
 ];
-const MOCK_RESOURCE_GROUPS = ["my-app-rg", "networking-rg", "shared-resources-rg"];
 const MOCK_VNETS = [
   { name: "my-vnet", resourceGroup: "my-app-rg", subnets: ["default", "app-subnet", "pe-subnet"] },
   { name: "hub-vnet", resourceGroup: "networking-rg", subnets: ["default", "endpoints-subnet"] },
@@ -1068,7 +1067,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                   }}
                 >
                   {MOCK_VNETS.map((v) => (
-                    <Option key={v.name} value={v.name}>
+                    <Option key={v.name} value={v.name} text={`${v.name} (${v.resourceGroup})`}>
                       {v.name} ({v.resourceGroup})
                     </Option>
                   ))}
