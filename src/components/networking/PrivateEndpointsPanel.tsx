@@ -29,9 +29,7 @@ import {
 } from "@fluentui/react-components";
 import {
   LockClosed20Regular,
-  Checkmark16Filled,
   Dismiss16Regular,
-  Clock16Regular,
   Add16Regular,
   ArrowClockwise16Regular,
   CheckmarkCircle16Regular,
@@ -41,7 +39,6 @@ import {
   Warning16Regular,
   Info16Regular,
   Filter16Regular,
-  ErrorCircle16Regular,
   ChevronDown16Regular,
 } from "@fluentui/react-icons";
 import { useNetworkingStyles } from "./NetworkingHub.styles";
@@ -182,22 +179,6 @@ const useLocalStyles = makeStyles({
     fontWeight: 500,
     color: tokens.colorNeutralForeground3,
     whiteSpace: "nowrap",
-  },
-  provisioningError: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    fontSize: "11px",
-    color: "#DC2626",
-    fontWeight: 500,
-  },
-  addButtonGroup: {
-    display: "flex",
-    alignItems: "center",
-  },
-  addMenuTrigger: {
-    ...shorthands.borderLeft("1px", "solid", tokens.colorNeutralStroke2),
-    marginLeft: "-1px",
   },
 });
 
@@ -569,49 +550,49 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     switch (status) {
       case "Approved":
         return (
-          <Badge appearance="filled" color="success" size="small" icon={<Checkmark16Filled />}>
+          <Badge appearance="tint" color="success">
             Approved
           </Badge>
         );
       case "Pending":
         return (
-          <Badge appearance="filled" color="warning" size="small" icon={<Clock16Regular />}>
+          <Badge appearance="tint" color="warning">
             Pending
           </Badge>
         );
       case "Approving":
         return (
-          <Badge appearance="filled" color="warning" size="small">
-            Approving...
+          <Badge appearance="tint" color="warning">
+            Approving…
           </Badge>
         );
       case "Rejected":
         return (
-          <Badge appearance="filled" color="danger" size="small" icon={<Dismiss16Regular />}>
+          <Badge appearance="tint" color="danger">
             Rejected
           </Badge>
         );
       case "Rejecting":
         return (
-          <Badge appearance="filled" color="danger" size="small">
-            Rejecting...
+          <Badge appearance="tint" color="danger">
+            Rejecting…
           </Badge>
         );
       case "Disconnected":
         return (
-          <Badge appearance="outline" color="informative" size="small">
+          <Badge appearance="tint" color="informative">
             Disconnected
           </Badge>
         );
       case "Disconnecting":
         return (
-          <Badge appearance="outline" color="informative" size="small">
-            Disconnecting...
+          <Badge appearance="tint" color="informative">
+            Disconnecting…
           </Badge>
         );
       default:
         return (
-          <Badge appearance="outline" color="informative" size="small">
+          <Badge appearance="tint" color="informative">
             {status}
           </Badge>
         );
@@ -710,45 +691,31 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
       {/* Command bar */}
       <div className={localStyles.toolbar}>
-        <div className={localStyles.addButtonGroup}>
-          <Tooltip content={ipSslConflict ? "Remove IP-based SSL bindings first" : isAtQuota ? `Maximum ${MAX_CONNECTIONS} connections reached` : "Add private endpoint (Express)"} relationship="label">
-            <Button
-              icon={<Add16Regular />}
-              appearance="subtle"
-              size="small"
-              disabled={ipSslConflict || isAtQuota || !!actionInProgress}
-              onClick={openAddDialog}
-            >
-              Express
-            </Button>
-          </Tooltip>
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Tooltip content="More add options" relationship="label">
-                <Button
-                  className={localStyles.addMenuTrigger}
-                  icon={<ChevronDown16Regular />}
-                  appearance="subtle"
-                  size="small"
-                  disabled={ipSslConflict || isAtQuota || !!actionInProgress}
-                />
-              </Tooltip>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem icon={<Add16Regular />} onClick={openAddDialog}>
-                  Express
-                </MenuItem>
-                <MenuItem
-                  icon={<Add16Regular />}
-                  disabled
-                >
-                  Advanced
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-        </div>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Tooltip content={ipSslConflict ? "Remove IP-based SSL bindings first" : isAtQuota ? `Maximum ${MAX_CONNECTIONS} connections reached` : "Add private endpoint"} relationship="label">
+              <Button
+                icon={<Add16Regular />}
+                appearance="subtle"
+                size="small"
+                disabled={ipSslConflict || isAtQuota || !!actionInProgress}
+              >
+                Add
+                <ChevronDown16Regular style={{ marginLeft: "2px" }} />
+              </Button>
+            </Tooltip>
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={openAddDialog}>
+                Express
+              </MenuItem>
+              <MenuItem disabled>
+                Advanced
+              </MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
 
         <div className={localStyles.toolbarSeparator} />
 
@@ -929,15 +896,17 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                   </td>
                   <td className={styles.tableCell}>
                     <div className={localStyles.statusCell}>
-                      {getStatusBadge(status)}
-                      {isTransitioning(status) && <Spinner size="tiny" />}
-                      {isProvisioningFailed(pe) && (
-                        <Tooltip content={`Provisioning failed: ${pe.provisioningState}`} relationship="label">
-                          <span className={localStyles.provisioningError}>
-                            <ErrorCircle16Regular />
-                            Provisioning failed
-                          </span>
+                      {isProvisioningFailed(pe) ? (
+                        <Tooltip content={pe.privateLinkServiceConnectionState.description} relationship="label">
+                          <Badge appearance="tint" color="danger">
+                            Failed
+                          </Badge>
                         </Tooltip>
+                      ) : (
+                        <>
+                          {getStatusBadge(status)}
+                          {isTransitioning(status) && <Spinner size="tiny" />}
+                        </>
                       )}
                     </div>
                   </td>

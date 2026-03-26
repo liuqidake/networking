@@ -440,11 +440,12 @@ export const useNetworkingStyles = makeStyles({
     ...shorthands.borderBottom("1px", "solid", "rgba(0,0,0,0.06)"),
   },
   tableCell: {
-    ...shorthands.padding("12px", "14px"),
+    ...shorthands.padding("10px", "14px"),
     fontSize: "13px",
     color: tokens.colorNeutralForeground1,
     ...shorthands.borderBottom("1px", "solid", "rgba(0,0,0,0.04)"),
     verticalAlign: "middle",
+    lineHeight: "20px",
   },
   tableRow: {
     transitionProperty: "background-color",
