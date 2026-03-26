@@ -283,11 +283,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     } else {
       setConnections([...state.site.properties.privateEndpointConnections]);
     }
-    setSelectedIndex(null);
+    setSelectedIds(new Set());
     setSearchQuery("");
     setStateFilter([]);
   }, [scenario, state]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -346,13 +346,59 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     : false; // no endpoints — no warning
 
   // ── Selected connection helpers ────────────────────
-  const selectedConnection =
-    selectedIndex !== null && selectedIndex < filteredConnections.length
-      ? filteredConnections[selectedIndex]
-      : null;
+  const selectedConnections = useMemo(
+    () => filteredConnections.filter((c) => selectedIds.has(c.privateEndpoint.id)),
+    [filteredConnections, selectedIds]
+  );
 
-  const anyActionDisabled =
-    actionInProgress !== null || (selectedConnection && isTransitioning(selectedConnection.privateLinkServiceConnectionState.status));
+  const hasSelection = selectedConnections.length > 0;
+
+  // Approve enabled only if ALL selected are Pending (can approve)
+  const canBulkApprove =
+    hasSelection &&
+    !actionInProgress &&
+    selectedConnections.every((c) => canApprove(c.privateLinkServiceConnectionState.status));
+
+  // Reject enabled only if ALL selected are Pending (can reject)
+  const canBulkReject =
+    hasSelection &&
+    !actionInProgress &&
+    selectedConnections.every((c) => canReject(c.privateLinkServiceConnectionState.status));
+
+  // Remove enabled if ALL selected can be removed
+  const canBulkRemove =
+    hasSelection &&
+    !actionInProgress &&
+    selectedConnections.every(
+      (c) => canRemove(c.privateLinkServiceConnectionState.status) && !isTransitioning(c.privateLinkServiceConnectionState.status)
+    );
+
+  // Select-all checkbox state
+  const allSelected =
+    filteredConnections.length > 0 &&
+    filteredConnections.every((c) => selectedIds.has(c.privateEndpoint.id));
+  const someSelected =
+    filteredConnections.some((c) => selectedIds.has(c.privateEndpoint.id)) && !allSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredConnections.map((c) => c.privateEndpoint.id)));
+    }
+  }, [allSelected, filteredConnections]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   // ── Handlers ───────────────────────────────────────
 
@@ -361,19 +407,18 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     setTimeout(() => {
       setConnections([...state.site.properties.privateEndpointConnections]);
       setIsRefreshing(false);
-      setSelectedIndex(null);
+      setSelectedIds(new Set());
     }, 800);
   }, [state]);
 
   const handleApprove = useCallback(() => {
-    if (!selectedConnection || !canApprove(selectedConnection.privateLinkServiceConnectionState.status)) return;
-    const peName = getPrivateEndpointName(selectedConnection);
-    setActionInProgress(`Approving ${peName}...`);
+    if (!canBulkApprove) return;
+    const ids = new Set(selectedConnections.map((c) => c.privateEndpoint.id));
+    setActionInProgress(`Approving ${ids.size} connection${ids.size > 1 ? "s" : ""}...`);
 
-    // Simulate: set to Approving, then Approved
     setConnections((prev) =>
       prev.map((c) =>
-        c === selectedConnection
+        ids.has(c.privateEndpoint.id)
           ? {
               ...c,
               privateLinkServiceConnectionState: {
@@ -388,7 +433,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     actionTimerRef.current = setTimeout(() => {
       setConnections((prev) =>
         prev.map((c) =>
-          c.privateEndpoint.id === selectedConnection.privateEndpoint.id &&
+          ids.has(c.privateEndpoint.id) &&
           c.privateLinkServiceConnectionState.status === "Approving"
             ? {
                 ...c,
@@ -402,16 +447,16 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
       );
       setActionInProgress(null);
     }, 1500);
-  }, [selectedConnection]);
+  }, [canBulkApprove, selectedConnections]);
 
   const handleReject = useCallback(() => {
-    if (!selectedConnection || !canReject(selectedConnection.privateLinkServiceConnectionState.status)) return;
-    const peName = getPrivateEndpointName(selectedConnection);
-    setActionInProgress(`Rejecting ${peName}...`);
+    if (!canBulkReject) return;
+    const ids = new Set(selectedConnections.map((c) => c.privateEndpoint.id));
+    setActionInProgress(`Rejecting ${ids.size} connection${ids.size > 1 ? "s" : ""}...`);
 
     setConnections((prev) =>
       prev.map((c) =>
-        c === selectedConnection
+        ids.has(c.privateEndpoint.id)
           ? {
               ...c,
               privateLinkServiceConnectionState: {
@@ -426,7 +471,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     actionTimerRef.current = setTimeout(() => {
       setConnections((prev) =>
         prev.map((c) =>
-          c.privateEndpoint.id === selectedConnection.privateEndpoint.id &&
+          ids.has(c.privateEndpoint.id) &&
           c.privateLinkServiceConnectionState.status === "Rejecting"
             ? {
                 ...c,
@@ -440,16 +485,16 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
       );
       setActionInProgress(null);
     }, 1500);
-  }, [selectedConnection]);
+  }, [canBulkReject, selectedConnections]);
 
   const handleRemove = useCallback(() => {
-    if (!selectedConnection || !canRemove(selectedConnection.privateLinkServiceConnectionState.status)) return;
-    const peName = getPrivateEndpointName(selectedConnection);
-    setActionInProgress(`Removing ${peName}...`);
+    if (!canBulkRemove) return;
+    const ids = new Set(selectedConnections.map((c) => c.privateEndpoint.id));
+    setActionInProgress(`Removing ${ids.size} connection${ids.size > 1 ? "s" : ""}...`);
 
     setConnections((prev) =>
       prev.map((c) =>
-        c === selectedConnection
+        ids.has(c.privateEndpoint.id)
           ? {
               ...c,
               privateLinkServiceConnectionState: {
@@ -463,14 +508,12 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
     actionTimerRef.current = setTimeout(() => {
       setConnections((prev) =>
-        prev.filter(
-          (c) => c.privateEndpoint.id !== selectedConnection.privateEndpoint.id
-        )
+        prev.filter((c) => !ids.has(c.privateEndpoint.id))
       );
-      setSelectedIndex(null);
+      setSelectedIds(new Set());
       setActionInProgress(null);
     }, 1500);
-  }, [selectedConnection]);
+  }, [canBulkRemove, selectedConnections]);
 
   // ── Add dialog ─────────────────────────────────────
 
@@ -724,11 +767,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
         <Tooltip
           content={
-            !selectedConnection
-              ? "Select a connection first"
-              : !canApprove(selectedConnection.privateLinkServiceConnectionState.status)
-              ? "Only pending connections can be approved"
-              : "Approve connection"
+            !hasSelection
+              ? "Select one or more connections"
+              : !canBulkApprove
+              ? "All selected connections must be in Pending state"
+              : "Approve selected connections"
           }
           relationship="label"
         >
@@ -736,11 +779,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
             icon={<CheckmarkCircle16Regular />}
             appearance="subtle"
             size="small"
-            disabled={
-              !selectedConnection ||
-              !canApprove(selectedConnection.privateLinkServiceConnectionState.status) ||
-              !!anyActionDisabled
-            }
+            disabled={!canBulkApprove}
             onClick={handleApprove}
           >
             Approve
@@ -749,11 +788,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
         <Tooltip
           content={
-            !selectedConnection
-              ? "Select a connection first"
-              : !canReject(selectedConnection.privateLinkServiceConnectionState.status)
-              ? "Only pending connections can be rejected"
-              : "Reject connection"
+            !hasSelection
+              ? "Select one or more connections"
+              : !canBulkReject
+              ? "All selected connections must be in Pending state"
+              : "Reject selected connections"
           }
           relationship="label"
         >
@@ -761,11 +800,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
             icon={<DismissCircle16Regular />}
             appearance="subtle"
             size="small"
-            disabled={
-              !selectedConnection ||
-              !canReject(selectedConnection.privateLinkServiceConnectionState.status) ||
-              !!anyActionDisabled
-            }
+            disabled={!canBulkReject}
             onClick={handleReject}
           >
             Reject
@@ -774,11 +809,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
         <Tooltip
           content={
-            !selectedConnection
-              ? "Select a connection first"
-              : !canRemove(selectedConnection.privateLinkServiceConnectionState.status)
-              ? "This connection cannot be removed in its current state"
-              : "Remove connection"
+            !hasSelection
+              ? "Select one or more connections"
+              : !canBulkRemove
+              ? "Selected connections cannot be removed in their current state"
+              : "Remove selected connections"
           }
           relationship="label"
         >
@@ -786,11 +821,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
             icon={<Delete16Regular />}
             appearance="subtle"
             size="small"
-            disabled={
-              !selectedConnection ||
-              !canRemove(selectedConnection.privateLinkServiceConnectionState.status) ||
-              !!anyActionDisabled
-            }
+            disabled={!canBulkRemove}
             onClick={handleRemove}
           >
             Remove
@@ -845,31 +876,43 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.tableHead} style={{ width: "30px" }}></th>
+              <th className={styles.tableHead} style={{ width: "30px" }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
+                  onChange={toggleSelectAll}
+                  style={{ margin: 0, cursor: "pointer" }}
+                />
+              </th>
               <th className={styles.tableHead}>Connection Name</th>
               <th className={styles.tableHead}>Connection State</th>
+              <th className={styles.tableHead}>Action</th>
               <th className={styles.tableHead}>Private Endpoint</th>
               <th className={styles.tableHead}>Description</th>
             </tr>
           </thead>
           <tbody>
-            {filteredConnections.map((pe, index) => {
+            {filteredConnections.map((pe) => {
               const connectionName = getConnectionName(pe);
               const peName = getPrivateEndpointName(pe);
-              const isSelected = selectedIndex === index;
+              const peId = pe.privateEndpoint.id;
+              const isSelected = selectedIds.has(peId);
               const status = pe.privateLinkServiceConnectionState.status;
               return (
                 <tr
-                  key={pe.privateEndpoint.id}
+                  key={peId}
                   className={`${styles.tableRow} ${isSelected ? localStyles.selectedRow : ""}`}
-                  onClick={() => setSelectedIndex(isSelected ? null : index)}
+                  onClick={() => toggleSelect(peId)}
                   style={{ cursor: "pointer" }}
                 >
                   <td className={styles.tableCell}>
                     <input
-                      type="radio"
+                      type="checkbox"
                       checked={isSelected}
-                      onChange={() => setSelectedIndex(isSelected ? null : index)}
+                      onChange={() => toggleSelect(peId)}
                       onClick={(e) => e.stopPropagation()}
                       style={{ margin: 0, cursor: "pointer" }}
                     />
@@ -898,6 +941,15 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                         </Tooltip>
                       )}
                     </div>
+                  </td>
+                  <td className={styles.tableCell}>
+                    {status === "Pending" ? (
+                      <span style={{ fontSize: "12px", color: tokens.colorNeutralForeground3 }}>
+                        Awaiting approval
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className={styles.tableCell}>
                     {peName}
