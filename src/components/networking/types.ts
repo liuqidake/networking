@@ -98,14 +98,39 @@ export interface ServiceEndpoint {
 }
 
 // Private Endpoint Connections
+export type PrivateEndpointConnectionStatus =
+  | "Pending"
+  | "Approved"
+  | "Approving"
+  | "Rejected"
+  | "Rejecting"
+  | "Disconnected"
+  | "Disconnecting";
+
+export type PrivateEndpointProvisioningState =
+  | "Succeeded"
+  | "Pending"
+  | "Updating"
+  | "Deleting"
+  | "Failed";
+
 export interface PrivateEndpointConnectionProperties {
-  provisioningState: string;
+  provisioningState: PrivateEndpointProvisioningState;
   privateEndpoint: { id: string };
   privateLinkServiceConnectionState: {
-    status: "Approved" | "Pending" | "Rejected" | "Disconnected";
+    status: PrivateEndpointConnectionStatus;
     description: string;
   };
   ipAddresses: string[];
+}
+
+export interface PrivateEndpointCreateInfo {
+  name: string;
+  subscription: string;
+  resourceGroup: string;
+  virtualNetwork: string;
+  subnet: string;
+  integrateDns: boolean;
 }
 
 // Hybrid Connections

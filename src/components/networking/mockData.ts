@@ -69,6 +69,17 @@ export const mockSite: ArmObj<SiteProperties> = {
         },
         ipAddresses: ["10.0.1.5"],
       },
+      {
+        provisioningState: "Succeeded",
+        privateEndpoint: {
+          id: `/subscriptions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/resourceGroups/my-app-rg/providers/Microsoft.Network/privateEndpoints/my-app-pe-staging`,
+        },
+        privateLinkServiceConnectionState: {
+          status: "Rejected",
+          description: "Rejected by admin",
+        },
+        ipAddresses: ["10.0.1.6"],
+      },
     ],
     hostNameSslStates: [
       {
