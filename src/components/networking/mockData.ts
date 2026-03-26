@@ -80,6 +80,17 @@ export const mockSite: ArmObj<SiteProperties> = {
         },
         ipAddresses: ["10.0.1.6"],
       },
+      {
+        provisioningState: "Failed",
+        privateEndpoint: {
+          id: `/subscriptions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/resourceGroups/my-app-rg/providers/Microsoft.Network/privateEndpoints/my-app-pe-failed`,
+        },
+        privateLinkServiceConnectionState: {
+          status: "Pending",
+          description: "Provisioning failed",
+        },
+        ipAddresses: [],
+      },
     ],
     hostNameSslStates: [
       {

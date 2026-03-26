@@ -18,6 +18,11 @@ import {
   Link,
   MessageBar,
   MessageBarBody,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
   makeStyles,
   tokens,
   shorthands,
@@ -36,6 +41,10 @@ import {
   Warning16Regular,
   Info16Regular,
   Filter16Regular,
+  ErrorCircle16Regular,
+  ChevronDown16Regular,
+  Globe16Regular,
+  Copy16Regular,
 } from "@fluentui/react-icons";
 import { useNetworkingStyles } from "./NetworkingHub.styles";
 import type {
@@ -177,6 +186,63 @@ const useLocalStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     whiteSpace: "nowrap",
   },
+  dnsSection: {
+    marginTop: "20px",
+    ...shorthands.padding("16px", "18px"),
+    backgroundColor: "#f8f9fb",
+    ...shorthands.borderRadius("10px"),
+  },
+  dnsSectionTitle: {
+    fontSize: "11px",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    color: tokens.colorNeutralForeground3,
+    marginBottom: "12px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  dnsRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    ...shorthands.padding("8px", "0"),
+    ...shorthands.borderBottom("1px", "solid", "rgba(0,0,0,0.05)"),
+    "&:last-child": {
+      borderBottomColor: "transparent",
+    },
+  },
+  dnsLabel: {
+    fontSize: "12px",
+    color: tokens.colorNeutralForeground3,
+    minWidth: "100px",
+  },
+  dnsValue: {
+    fontSize: "12px",
+    fontWeight: 500,
+    fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', monospace",
+    color: tokens.colorNeutralForeground1,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  provisioningError: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    fontSize: "11px",
+    color: "#DC2626",
+    fontWeight: 500,
+  },
+  addButtonGroup: {
+    display: "flex",
+    alignItems: "center",
+  },
+  addMenuTrigger: {
+    ...shorthands.borderLeft("1px", "solid", tokens.colorNeutralStroke2),
+    marginLeft: "-1px",
+  },
 });
 
 // ── Helpers ──────────────────────────────────────────────
@@ -227,6 +293,14 @@ function validatePeName(
   if (existingNames.some((n) => n.toLowerCase() === name.toLowerCase()))
     return "A private endpoint with this name already exists.";
   return null;
+}
+
+function getPrivateDnsHostname(siteName: string): string {
+  return `${siteName}.privatelink.azurewebsites.net`;
+}
+
+function isProvisioningFailed(pe: PrivateEndpointConnectionProperties): boolean {
+  return pe.provisioningState === "Failed";
 }
 
 // ── Component ────────────────────────────────────────────
@@ -641,17 +715,45 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
 
       {/* Command bar */}
       <div className={localStyles.toolbar}>
-        <Tooltip content={ipSslConflict ? "Remove IP-based SSL bindings first" : isAtQuota ? `Maximum ${MAX_CONNECTIONS} connections reached` : "Add private endpoint"} relationship="label">
-          <Button
-            icon={<Add16Regular />}
-            appearance="subtle"
-            size="small"
-            disabled={ipSslConflict || isAtQuota || !!actionInProgress}
-            onClick={openAddDialog}
-          >
-            Add
-          </Button>
-        </Tooltip>
+        <div className={localStyles.addButtonGroup}>
+          <Tooltip content={ipSslConflict ? "Remove IP-based SSL bindings first" : isAtQuota ? `Maximum ${MAX_CONNECTIONS} connections reached` : "Add private endpoint (Express)"} relationship="label">
+            <Button
+              icon={<Add16Regular />}
+              appearance="subtle"
+              size="small"
+              disabled={ipSslConflict || isAtQuota || !!actionInProgress}
+              onClick={openAddDialog}
+            >
+              Express
+            </Button>
+          </Tooltip>
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Tooltip content="More add options" relationship="label">
+                <Button
+                  className={localStyles.addMenuTrigger}
+                  icon={<ChevronDown16Regular />}
+                  appearance="subtle"
+                  size="small"
+                  disabled={ipSslConflict || isAtQuota || !!actionInProgress}
+                />
+              </Tooltip>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem icon={<Add16Regular />} onClick={openAddDialog}>
+                  Express
+                </MenuItem>
+                <MenuItem
+                  icon={<Add16Regular />}
+                  disabled
+                >
+                  Advanced
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        </div>
 
         <div className={localStyles.toolbarSeparator} />
 
@@ -826,6 +928,14 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                     <div className={localStyles.statusCell}>
                       {getStatusBadge(status)}
                       {isTransitioning(status) && <Spinner size="tiny" />}
+                      {isProvisioningFailed(pe) && (
+                        <Tooltip content={`Provisioning failed: ${pe.provisioningState}`} relationship="label">
+                          <span className={localStyles.provisioningError}>
+                            <ErrorCircle16Regular />
+                            Provisioning failed
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                   <td className={styles.tableCell}>
@@ -863,6 +973,62 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
           >
             Add private endpoint
           </Button>
+        </div>
+      )}
+
+      {/* DNS Information */}
+      {connections.length > 0 && (
+        <div className={localStyles.dnsSection}>
+          <div className={localStyles.dnsSectionTitle}>
+            <Globe16Regular />
+            Private DNS Configuration
+          </div>
+          <div className={localStyles.dnsRow}>
+            <span className={localStyles.dnsLabel}>DNS zone</span>
+            <span className={localStyles.dnsValue}>
+              privatelink.azurewebsites.net
+              <Tooltip content="Copy" relationship="label">
+                <Button
+                  icon={<Copy16Regular />}
+                  appearance="subtle"
+                  size="small"
+                  onClick={() => navigator.clipboard.writeText("privatelink.azurewebsites.net")}
+                />
+              </Tooltip>
+            </span>
+          </div>
+          <div className={localStyles.dnsRow}>
+            <span className={localStyles.dnsLabel}>Hostname</span>
+            <span className={localStyles.dnsValue}>
+              {getPrivateDnsHostname(state.site.name)}
+              <Tooltip content="Copy" relationship="label">
+                <Button
+                  icon={<Copy16Regular />}
+                  appearance="subtle"
+                  size="small"
+                  onClick={() => navigator.clipboard.writeText(getPrivateDnsHostname(state.site.name))}
+                />
+              </Tooltip>
+            </span>
+          </div>
+          {connections
+            .filter((c) => c.privateLinkServiceConnectionState.status === "Approved" && c.ipAddresses.length > 0)
+            .map((c) => (
+              <div key={c.privateEndpoint.id} className={localStyles.dnsRow}>
+                <span className={localStyles.dnsLabel}>{getPrivateEndpointName(c)}</span>
+                <span className={localStyles.dnsValue}>
+                  {c.ipAddresses[0]}
+                  <Tooltip content="Copy" relationship="label">
+                    <Button
+                      icon={<Copy16Regular />}
+                      appearance="subtle"
+                      size="small"
+                      onClick={() => navigator.clipboard.writeText(c.ipAddresses[0])}
+                    />
+                  </Tooltip>
+                </span>
+              </div>
+            ))}
         </div>
       )}
 
