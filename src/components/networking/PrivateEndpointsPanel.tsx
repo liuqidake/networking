@@ -312,11 +312,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
   const isAtQuota = connections.length >= MAX_CONNECTIONS;
 
   const ipSslConflict = hasIpBasedSsl(state);
-  const publicNetworkDisabled = scenario === "regular"
-    ? true  // "regular" = public access disabled with PE connections
+  const publicNetworkAccessEnabled = scenario === "regular"
+    ? false // "regular" = public access disabled (secure state, no warning)
     : scenario === "public-access"
-    ? false // public access enabled
-    : false; // no endpoints — public access state doesn't matter
+    ? true  // public access enabled — show warning
+    : false; // no endpoints — no warning
 
   // ── Selected connection helpers ────────────────────
   const selectedConnection =
@@ -609,13 +609,14 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
         </div>
       )}
 
-      {publicNetworkDisabled && (
-        <MessageBar intent="info" style={{ marginBottom: "12px" }}>
-          <MessageBarBody>
-            Public network access is disabled. Only traffic through private
-            endpoints can reach this app.
-          </MessageBarBody>
-        </MessageBar>
+      {publicNetworkAccessEnabled && (
+        <div className={styles.warningBar}>
+          <Warning16Regular style={{ flexShrink: 0, marginTop: "2px" }} />
+          <span>
+            Access restriction settings allow access from public networks. The
+            security provided by private endpoints will not be satisfied.
+          </span>
+        </div>
       )}
 
       {isAtQuota && (
