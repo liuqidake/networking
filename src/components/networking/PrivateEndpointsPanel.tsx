@@ -495,6 +495,58 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
     }, 1500);
   }, [canBulkRemove, selectedConnections]);
 
+  // ── Inline row actions ────────────────────────────
+
+  const handleInlineApprove = useCallback((pe: PrivateEndpointConnectionProperties) => {
+    const id = pe.privateEndpoint.id;
+    const name = getPrivateEndpointName(pe);
+    setActionInProgress(`Approving ${name}...`);
+
+    setConnections((prev) =>
+      prev.map((c) =>
+        c.privateEndpoint.id === id
+          ? { ...c, privateLinkServiceConnectionState: { ...c.privateLinkServiceConnectionState, status: "Approving" as const } }
+          : c
+      )
+    );
+
+    actionTimerRef.current = setTimeout(() => {
+      setConnections((prev) =>
+        prev.map((c) =>
+          c.privateEndpoint.id === id && c.privateLinkServiceConnectionState.status === "Approving"
+            ? { ...c, privateLinkServiceConnectionState: { status: "Approved" as const, description: "Approved by user" } }
+            : c
+        )
+      );
+      setActionInProgress(null);
+    }, 1500);
+  }, []);
+
+  const handleInlineReject = useCallback((pe: PrivateEndpointConnectionProperties) => {
+    const id = pe.privateEndpoint.id;
+    const name = getPrivateEndpointName(pe);
+    setActionInProgress(`Rejecting ${name}...`);
+
+    setConnections((prev) =>
+      prev.map((c) =>
+        c.privateEndpoint.id === id
+          ? { ...c, privateLinkServiceConnectionState: { ...c.privateLinkServiceConnectionState, status: "Rejecting" as const } }
+          : c
+      )
+    );
+
+    actionTimerRef.current = setTimeout(() => {
+      setConnections((prev) =>
+        prev.map((c) =>
+          c.privateEndpoint.id === id && c.privateLinkServiceConnectionState.status === "Rejecting"
+            ? { ...c, privateLinkServiceConnectionState: { status: "Rejected" as const, description: "Rejected by user" } }
+            : c
+        )
+      );
+      setActionInProgress(null);
+    }, 1500);
+  }, []);
+
   // ── Add dialog ─────────────────────────────────────
 
   const openAddDialog = useCallback(() => {
@@ -911,10 +963,33 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                     </div>
                   </td>
                   <td className={styles.tableCell}>
-                    {status === "Pending" ? (
-                      <span style={{ fontSize: "12px", color: tokens.colorNeutralForeground3 }}>
-                        Awaiting approval
-                      </span>
+                    {status === "Pending" && !isProvisioningFailed(pe) ? (
+                      <div style={{ display: "flex", gap: "4px" }}>
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<CheckmarkCircle16Regular />}
+                          disabled={!!actionInProgress}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInlineApprove(pe);
+                          }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          appearance="subtle"
+                          size="small"
+                          icon={<DismissCircle16Regular />}
+                          disabled={!!actionInProgress}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInlineReject(pe);
+                          }}
+                        >
+                          Reject
+                        </Button>
+                      </div>
                     ) : (
                       "—"
                     )}
