@@ -1,6 +1,8 @@
+import { useState, useCallback } from "react";
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { Sidebar } from "./components/Sidebar";
 import { ApiHub } from "./components/v2/ApiHub";
+import { NetworkingHub } from "./components/networking";
 
 const useStyles = makeStyles({
   root: {
@@ -17,14 +19,22 @@ const useStyles = makeStyles({
   },
 });
 
+export type ActiveView = "api-management" | "networking";
+
 function App() {
   const styles = useStyles();
+  const [activeView, setActiveView] = useState<ActiveView>("networking");
+
+  const handleNavigate = useCallback((view: ActiveView) => {
+    setActiveView(view);
+  }, []);
 
   return (
     <div className={styles.root}>
-      <Sidebar />
+      <Sidebar activeView={activeView} onNavigate={handleNavigate} />
       <main className={styles.main}>
-        <ApiHub />
+        {activeView === "api-management" && <ApiHub />}
+        {activeView === "networking" && <NetworkingHub />}
       </main>
     </div>
   );
