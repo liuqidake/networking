@@ -87,8 +87,10 @@ const useLocalStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     gap: "4px",
-    marginBottom: "12px",
+    marginBottom: "16px",
     marginLeft: "-8px",
+    paddingBottom: "12px",
+    ...shorthands.borderBottom("1px", "solid", "rgba(0,0,0,0.06)"),
   },
   toolbarSeparator: {
     width: "1px",
@@ -100,7 +102,7 @@ const useLocalStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    marginBottom: "12px",
+    marginBottom: "16px",
   },
   searchInput: {
     flex: 1,
@@ -124,6 +126,11 @@ const useLocalStyles = makeStyles({
     "&:hover": {
       textDecorationLine: "underline",
     },
+  },
+  actionCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
   },
   statusCell: {
     display: "flex",
@@ -964,9 +971,9 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                   </td>
                   <td className={styles.tableCell}>
                     {status === "Pending" && !isProvisioningFailed(pe) ? (
-                      <div style={{ display: "flex", gap: "4px" }}>
+                      <div className={localStyles.actionCell}>
                         <Button
-                          appearance="subtle"
+                          appearance="outline"
                           size="small"
                           icon={<CheckmarkCircle16Regular />}
                           disabled={!!actionInProgress}
@@ -978,7 +985,7 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                           Approve
                         </Button>
                         <Button
-                          appearance="subtle"
+                          appearance="outline"
                           size="small"
                           icon={<DismissCircle16Regular />}
                           disabled={!!actionInProgress}
