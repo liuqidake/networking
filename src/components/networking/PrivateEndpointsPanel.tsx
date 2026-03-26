@@ -165,6 +165,18 @@ const useLocalStyles = makeStyles({
     fontSize: "13px",
     color: tokens.colorNeutralForeground3,
   },
+  scenarioSelector: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    flexShrink: 0,
+  },
+  scenarioLabel: {
+    fontSize: "12px",
+    fontWeight: 500,
+    color: tokens.colorNeutralForeground3,
+    whiteSpace: "nowrap",
+  },
 });
 
 // ── Helpers ──────────────────────────────────────────────
@@ -223,14 +235,31 @@ interface PrivateEndpointsPanelProps {
   state: NetworkingState;
 }
 
+type Scenario = "regular" | "public-access" | "no-endpoints";
+
 export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
   const styles = useNetworkingStyles();
   const localStyles = useLocalStyles();
+
+  // ── Scenario selector ───────────────────────────────
+  const [scenario, setScenario] = useState<Scenario>("regular");
 
   // ── State ──────────────────────────────────────────
   const [connections, setConnections] = useState<PrivateEndpointConnectionProperties[]>(
     () => [...state.site.properties.privateEndpointConnections]
   );
+
+  // Reset connections when scenario changes
+  useEffect(() => {
+    if (scenario === "no-endpoints") {
+      setConnections([]);
+    } else {
+      setConnections([...state.site.properties.privateEndpointConnections]);
+    }
+    setSelectedIndex(null);
+    setSearchQuery("");
+    setStateFilter([]);
+  }, [scenario, state]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<string[]>([]);
@@ -283,7 +312,11 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
   const isAtQuota = connections.length >= MAX_CONNECTIONS;
 
   const ipSslConflict = hasIpBasedSsl(state);
-  const publicNetworkDisabled = state.site.properties.publicNetworkAccess === "Disabled";
+  const publicNetworkDisabled = scenario === "regular"
+    ? true  // "regular" = public access disabled with PE connections
+    : scenario === "public-access"
+    ? false // public access enabled
+    : false; // no endpoints — public access state doesn't matter
 
   // ── Selected connection helpers ────────────────────
   const selectedConnection =
@@ -539,6 +572,28 @@ export function PrivateEndpointsPanel({ state }: PrivateEndpointsPanelProps) {
                 : "No private endpoints configured"}
             </div>
           </div>
+        </div>
+        <div className={localStyles.scenarioSelector}>
+          <span className={localStyles.scenarioLabel}>Scenarios</span>
+          <Dropdown
+            size="small"
+            value={
+              scenario === "regular"
+                ? "Regular"
+                : scenario === "public-access"
+                ? "Public network access enabled"
+                : "No private endpoints"
+            }
+            selectedOptions={[scenario]}
+            onOptionSelect={(_, data) => {
+              if (data.optionValue) setScenario(data.optionValue as Scenario);
+            }}
+            style={{ minWidth: "220px" }}
+          >
+            <Option value="regular">Regular</Option>
+            <Option value="public-access">Public network access enabled</Option>
+            <Option value="no-endpoints">No private endpoints</Option>
+          </Dropdown>
         </div>
       </div>
 
