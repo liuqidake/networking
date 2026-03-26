@@ -325,7 +325,7 @@ export function AccessRestrictionsPanel({ state }: AccessRestrictionsPanelProps)
 
   // [Feature 6] Undo delete
   const [undoState, setUndoState] = useState<{ rule: IpSecurityRestriction; index: number; tab: SiteTab } | null>(null);
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Private endpoints check
   const hasPrivateEndpoints = siteProps.privateEndpointConnections?.some(
@@ -339,7 +339,6 @@ export function AccessRestrictionsPanel({ state }: AccessRestrictionsPanelProps)
   const setCurrentDefaultAction = activeTab === "main" ? setMainDefaultAction : setScmDefaultAction;
 
   // [Feature 1] Posture summary data
-  const totalRules = mainRules.length + scmRules.length;
   const mainAllowCount = mainRules.filter(r => r.action === "Allow").length;
   const mainDenyCount = mainRules.filter(r => r.action === "Deny").length;
 
